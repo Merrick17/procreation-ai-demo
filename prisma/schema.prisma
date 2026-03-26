@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  walletAddress String         @unique
+  credits       Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  generations   Generation[]
+  nfts          NFT[]
+  listings      Listing[]
+  promptSales   PromptListing[]
+  transactions  CreditTransaction[]
+}
+
+model CreditTransaction {
+  id         String   @id @default(cuid())
+  userId     String
+  amount     Int
+  type       String   // "PURCHASE" | "SPEND" | "REFUND"
+  txSignature String? // Solana tx signature
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model Generation {
+  id          String   @id @default(cuid())
+  userId      String
+  prompt      String
+  enhancedPrompt String?
+  imageUrl    String
+  creditsCost Int
+  comfyJobId  String?
+  status      String   // "PENDING" | "GENERATING" | "DONE" | "FAILED"
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  nft         NFT?
+}
+
+model NFT {
+  id             String   @id @default(cuid())
+  userId         String
+  generationId   String   @unique
+  mintAddress    String   @unique
+  metadataUri    String
+  name           String
+  description    String?
+  royaltyBps     Int      @default(500) // 5%
+  type           String   @default("IMAGE") // "IMAGE" | "PROMPT" | "BUNDLE"
+  status         String   // "MINTED" | "LISTED" | "SOLD"
+  createdAt      DateTime @default(now())
+
+  user           User      @relation(fields: [userId], references: [id])
+  generation     Generation @relation(fields: [generationId], references: [id])
+  listing        Listing?
+}
+
+model Listing {
+  id          String   @id @default(cuid())
+  userId      String
+  nftId       String   @unique
+  priceSOL    Float
+  status      String   // "ACTIVE" | "SOLD" | "CANCELLED"
+  buyerWallet String?
+  txSignature String?
+  createdAt   DateTime @default(now())
+  soldAt      DateTime?
+
+  user        User     @relation(fields: [userId], references: [id])
+  nft         NFT      @relation(fields: [nftId], references: [id])
+}
+
+model PromptListing {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  prompt      String
+  priceSOL    Float
+  previewUrl  String?
+  tags        String   // Comma-separated tags or JSON string
+  sales       Int      @default(0)
+  status      String   // "ACTIVE" | "ARCHIVED"
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
